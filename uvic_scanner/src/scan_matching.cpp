@@ -100,37 +100,38 @@ void laser_callback(const sensor_msgs::LaserScan& input) {
 
 	//### Initialization of Generalized Interative Closest Point from PCL ###
 	//### INSERT INITIALIZATION CALL of type <pcl::PointXYZ, pcl::PointXYZ>
-        //### ???
+        pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> gicp;
 
 	//### Setting the input for GICP as the new_pointcloud ###
         //### INSERT FUNCTION CALL HERE	
-        //### ???
+        gicp.setInputCloud(new_pointcloud);
+
 
 	//### Setting the output for GICP as the kf_pointcloud ###
         //### INSERT FUNCTION CALL HERE
-        //### ???
+        gicp.setInputTarget(kf_pointcloud);
 
 	//### A target for the converged pointcloud of new_pointcloud and kf_pointcloud ###
         //### INSERT POINTER INITIALIZATION of form pcl::PointCloud<pcl::PointXYZ>
-        //### ???
+        pcl::PointCloud<pcl::PointXYZ>::Ptr new_converged_PointCloud;
 
 	//### Running alignment on GICP between new_pointcloud and kf_pointcloud ###
         //### INSERT FUNCTION CALL HERE
-        //### ???
+        gicp.align(*new_converged_PointCloud);
 
 	//### Get the fitness score of the alignment from the GICP object
 	//### The fitness of the alignment between new_pointcloud and kf_pointcloud ###
         //### converged_fitness = 0.0, means 100% match. Scale from 0.0 to 1.0.
 	//### INSERT FUNCTION CALL HERE assigned to "double converged_fitness"
-	//### ???
+        double converged_fitness = gicp.getFitnessScore();
 
 	//### Get the boolean indicate whether the two scans (pointclouds) converged
 	//### INSERT FUNCTION CALL HERE assigned to "bool converged"
-        //### ???
+        bool converged = gicp.hasConverged();
 
 	//### Get the matrix transform between the two scans (pointclouds)
 	//### INSERT FUNCTION CALL assigned to variable of type Eigen::Matrix4f
-	//### ???
+        Eigen::Matrix4f transform_Result = gicp.getFinalTransformation();
  
         if(converged) {
           ROS_INFO("[scan_matching][SUCCESS] Current scan successfully converged with fake keyframe.");
