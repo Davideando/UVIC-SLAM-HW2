@@ -104,7 +104,7 @@ void laser_callback(const sensor_msgs::LaserScan& input) {
 
 	//### Setting the input for GICP as the new_pointcloud ###
         //### INSERT FUNCTION CALL HERE	
-        gicp.setInputCloud(new_pointcloud);
+        gicp.setInputSource(new_pointcloud);
 
 
 	//### Setting the output for GICP as the kf_pointcloud ###
@@ -113,7 +113,7 @@ void laser_callback(const sensor_msgs::LaserScan& input) {
 
 	//### A target for the converged pointcloud of new_pointcloud and kf_pointcloud ###
         //### INSERT POINTER INITIALIZATION of form pcl::PointCloud<pcl::PointXYZ>
-        pcl::PointCloud<pcl::PointXYZ>::Ptr new_converged_PointCloud;
+        pcl::PointCloud<pcl::PointXYZ>::Ptr new_converged_PointCloud(new pcl::PointCloud<pcl::PointXYZ>);
 
 	//### Running alignment on GICP between new_pointcloud and kf_pointcloud ###
         //### INSERT FUNCTION CALL HERE
@@ -131,7 +131,7 @@ void laser_callback(const sensor_msgs::LaserScan& input) {
 
 	//### Get the matrix transform between the two scans (pointclouds)
 	//### INSERT FUNCTION CALL assigned to variable of type Eigen::Matrix4f
-        Eigen::Matrix4f transform_Result = gicp.getFinalTransformation();
+        Eigen::Matrix4f transform = gicp.getFinalTransformation();
  
         if(converged) {
           ROS_INFO("[scan_matching][SUCCESS] Current scan successfully converged with fake keyframe.");
@@ -139,9 +139,9 @@ void laser_callback(const sensor_msgs::LaserScan& input) {
 	  //### The Delta transformation between the ref scan and the input scan
 	  //### Translate the above "Eigen::Matrix4f transform" into Dx, Dy, Dth
 	  //### Indicating the difference in x, y and rotation between scans
-          //double Dx = transform( ? , ?);
-          //double Dy = transform( ?, ?);
-          //double Dth = atan2( transform( ?, ?), transform( ?, ?) );
+          double Dx = transform(0, 3);
+          double Dy = transform(1, 3);
+          double Dth = atan2( transform( 1, 0), transform( 0, 0) );
 
 	  //### The Delta transformation in 2D space
           //### EXTRACT THE 2D DELTA FROM THE 3D TRANSFORM ABOVE
@@ -151,15 +151,17 @@ void laser_callback(const sensor_msgs::LaserScan& input) {
 	
 	  //### the covariance of the delta
           //### COMPUTE THE COVARIANCE BASED ON THE FORMULAS IN THE README.md FILE
-          //double Dl = ??;
-          //double sigma_x_squared = ??;
-          //double sigma_y_squared = ??;
-          //double sigma_th_squared = ?;
+          Eigen::Vector2f pos; // Temporal vector to calculate the norm
+          pos << Dx,Dy; // Fill the vector with Dx and Dy
+          double Dl = pos.norm();
+          double sigma_x_squared = k_disp_disp * Dl;
+          double sigma_y_squared = k_disp_disp * Dl;
+          double sigma_th_squared = k_rot_rot * Dth;
 
-          //Eigen::MatrixXd C_l(6, 6);
-          //C_l( ?, ?) = sigma_x_squared;
-          //C_l( ?, ?) = sigma_y_squared;
-          //C_l( ?, ?) = sigma_th_squared;
+          Eigen::MatrixXd C_l(6, 6);
+          C_l( 0, 0) = sigma_x_squared;
+          C_l( 1, 1) = sigma_y_squared;
+          C_l( 2, 2) = sigma_th_squared;
 
           double converged_fitness_threshold = 0.15;
           if(converged_fitness > converged_fitness_threshold) {
